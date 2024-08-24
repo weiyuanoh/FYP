@@ -52,19 +52,44 @@ def GL(xi, ci, y, x, n2):
 		sum = sum + prod 
 	return (y-x)/2 * (sum)
 
-def phiij(i,j):
-	
+def phiij(numofnodes, i, j, l, xlist):
+	finalsum = 0
+	for k in range(numofnodes-1):
 
-	return (i,j)
+		x = xlist[k]
+		y = xlist[k+1]
+	 
+		if k == i :
+			d_phi_i = 2**l 
+		elif k == i + 1 :
+			d_phi_i = -2**l 
+		else: 
+			d_phi_i = 0 
+ 
+		if k == j : 
+			d_phi_j = 2**l 
+		elif k == j + 1 :
+			d_phi_j = -2**l 
+		else:
+			d_phi_j = 0 
 
-def hat_integral(d_phi_i , d_phi_j, func, *args, **kwargs):
-	sum = 0 
-	i = 0 
-	j = 0 
-	for i in listij:
-		for j in listij:
-			for i in range(len(xlist)): 
-				prod = GL(**kwargs) * d_phi_i * d_phi_j
+		n2 = 5 
+		xi = gauleg(n2)[0]
+		ci = gauleg(n2)[1]
+		onegl = GL(xi = xi, ci = ci, y = y, x = x, n2 = 5) * d_phi_i *d_phi_j
+		finalsum = finalsum + onegl
+
+	return finalsum 
+
+
+
+def matrix(ijlist, matrix, n1, l, xlist):
+	for i in ijlist:
+		for j in ijlist:
+			aij = phiij(numofnodes=n1, i=i, j =j, l = l, xlist=xlist)
+			matrix[i][j] = aij 
+
+	return matrix 
 
 			
 
