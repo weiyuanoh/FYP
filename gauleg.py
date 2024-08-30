@@ -1,6 +1,7 @@
 
 import math 
 import numpy 
+import sympy 
 
 def gauleg(n2):
 	eps = 2.22044604925031e-16
@@ -91,7 +92,23 @@ def matrix(ijlist, matrix, n1, l, xlist):
 
 	return matrix 
 
-			
 
-	
+
+def u(x):
+	return x*(1-x)
+
+
+def f(x):
+	return u(x) * a(x) 
+
+
+def phi_j0(x, l):
+	return 2**l * x 
+
+
+def shift(phi_j0):
+	def phi_j(x, n, h):
+		return phi_j0(x - n *h)
+	return phi_j
+
 
