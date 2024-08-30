@@ -92,14 +92,19 @@ def matrix(ijlist, matrix, n1, l, xlist):
 
 	return matrix 
 
-
+x = sympy.Symbol('x')
 
 def u(x):
 	return x*(1-x)
 
 
-def f(x):
-	return u(x) * a(x) 
+def product(u, a):
+	def h(x):
+		return u(x) * a(x)
+	return h
+
+def f(h):
+	return sympy.diff(h, x)
 
 
 def phi_j0(x, l):
