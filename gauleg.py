@@ -46,10 +46,10 @@ def listi(a,b,h,n1):
 def a(x):
 	return (2 + math.sin(x))
 
-def GL(xi, ci, y, x, n2):
+def GL(xi, ci, y, x, n2, func):
 	sum = 0 
 	for i in range(n2):
-		prod = ci[i]*a(0.5*(((y-x)*xi[i])+(y+x)))
+		prod = ci[i]*func(0.5*(((y-x)*xi[i])+(y+x)))
 		sum = sum + prod 
 	return (y-x)/2 * (sum)
 
@@ -77,7 +77,7 @@ def phiij(numofnodes, i, j, l, xlist):
 		n2 = 5 
 		xi = gauleg(n2)[0]
 		ci = gauleg(n2)[1]
-		onegl = GL(xi = xi, ci = ci, y = y, x = x, n2 = 5) * d_phi_i *d_phi_j
+		onegl = GL(xi = xi, ci = ci, y = y, x = x, n2 = 5, func = a) * d_phi_i *d_phi_j
 		finalsum = finalsum + onegl
 
 	return finalsum 
@@ -94,26 +94,33 @@ def matrix(ijlist, matrix, n1, l, xlist):
 
 x = sympy.Symbol('x')
 
-def u(x):
-	return x*(1-x)
+def f(s):
+    return 2 * math.sin(s) + (2 * s - 1) * math.cos(s) + 4
 
 
-def product(u, a):
-	def h(x):
-		return u(x) * a(x)
-	return h
+def intergrand():
+	def phi_j(s, numofnodes, i, l):
+		listasdf = []
+		for k in range(numofnodes-1):
+			if k == i :
+				phi_j  = 2**l * s
+			elif k == i + 1 :
+				phi_j = - 2**l * s
+			else: 
+				phi_j = 0
 
-def f(h):
-	return sympy.diff(h, x)
-
-
-def phi_j0(x, l):
-	return 2**l * x 
-
-
-def shift(phi_j0):
-	def phi_j(x, n, h):
-		return phi_j0(x - n *h)
+			y = f(s)
+			product = y * phi_j
+			return product
 	return phi_j
+
+
+
+def F(ijlist, matrix, n1, l, xlist):
+	for i in ijlist:
+		aij = phi(numofnodes=n1, i=i, l = l, xlist=xlist)
+		matrix[i][0] = aij 
+
+	return matrix 
 
 
