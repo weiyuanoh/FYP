@@ -109,7 +109,7 @@ def intergrand():
 			else: 
 				phi_j = 0
 
-			y = f(s)
+			y = f
 			product = y * phi_j
 			return product
 	return phi_j
