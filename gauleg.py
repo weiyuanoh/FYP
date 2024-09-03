@@ -88,7 +88,7 @@ def matrix(ijlist, matrix, n1, l, xlist):
 	for i in ijlist:
 		for j in ijlist:
 			aij = phiij(numofnodes=n1, i=i, j =j, l = l, xlist=xlist)
-			matrix[i][j] = aij 
+			matrix[i,j] = aij 
 
 	return matrix 
 
