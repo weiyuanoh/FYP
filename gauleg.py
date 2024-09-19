@@ -44,7 +44,7 @@ def listi(a,b,h,n1):
 
 
 def a(x):
-	return (2 + math.sin(x))
+	return 5*x +1
 
 def GL(xi, ci, y, x, n2, func):
 	sum = 0 
@@ -95,7 +95,7 @@ def matrix(ijlist, matrix, n1, l, xlist):
 
 
 def f(s):
-    return 2 * math.sin(s) + (2 * s - 1) * math.cos(s) + 4
+    return math.sin(s)
 
 def intergrand():
     def phi_j(numofnodes, i, l):
