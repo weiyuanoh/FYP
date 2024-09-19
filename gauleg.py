@@ -1,6 +1,7 @@
 
 import math 
 import numpy 
+import sympy 
 
 def gauleg(n2):
 	eps = 2.22044604925031e-16
@@ -43,12 +44,12 @@ def listi(a,b,h,n1):
 
 
 def a(x):
-	return (2 + math.sin(x))
+	return 5*x +1
 
-def GL(xi, ci, y, x, n2):
+def GL(xi, ci, y, x, n2, func):
 	sum = 0 
 	for i in range(n2):
-		prod = ci[i]*a(0.5*(((y-x)*xi[i])+(y+x)))
+		prod = ci[i]*func(0.5*(((y-x)*xi[i])+(y+x)))
 		sum = sum + prod 
 	return (y-x)/2 * (sum)
 
@@ -76,10 +77,10 @@ def phiij(numofnodes, i, j, l, xlist):
 		n2 = 5 
 		xi = gauleg(n2)[0]
 		ci = gauleg(n2)[1]
-		onegl = GL(xi = xi, ci = ci, y = y, x = x, n2 = 5) * d_phi_i *d_phi_j
+		onegl = GL(xi = xi, ci = ci, y = y, x = x, n2 = 5, func = a) * d_phi_i *d_phi_j
 		finalsum = finalsum + onegl
 
-	return finalsum 
+	return finalsum
 
 
 
@@ -87,11 +88,42 @@ def matrix(ijlist, matrix, n1, l, xlist):
 	for i in ijlist:
 		for j in ijlist:
 			aij = phiij(numofnodes=n1, i=i, j =j, l = l, xlist=xlist)
-			matrix[i][j] = aij 
+			matrix[i,j] = aij 
 
 	return matrix 
 
-			
 
-	
+
+def f(s):
+    return math.sin(s)
+
+def intergrand():
+    def phi_j(numofnodes, i, l):
+        def phi_j_function(s):
+            for k in range(numofnodes-1):    
+                
+                if k == i:
+                    phi_j_value = 2**l * (s - (i / 2**l))
+                elif k == i + 1:
+                    phi_j_value = -(2**l * (s - ((i + 2) / 2**l)))
+                else: 
+                    phi_j_value = 0
+
+                h = f(s) * phi_j_value
+
+            return h
+        return phi_j_function
+    return phi_j
+
+def GLF_sum(func, xlist, n2, numofnodes):
+	finalsum = 0
+	xi = gauleg(n2)[0]
+	ci = gauleg(n2)[1]
+	for k in range(numofnodes-1):
+		x = xlist[k]
+		y = xlist[k+1]
+		onegl = GL(xi = xi, ci = ci, y =y, x = x, n2 = 5, func = func )
+		finalsum = finalsum + onegl
+	return finalsum 
+
 
