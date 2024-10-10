@@ -95,7 +95,7 @@ def matrix(ijlist, matrix, n1, l, xlist):
 
 
 def f(s):
-    return math.sin(s)
+    return  20*s -3
 
 def intergrand():
     def phi_j(numofnodes, i, l):

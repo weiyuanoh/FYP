@@ -83,13 +83,16 @@ def oneerror(l):
     abserr = abs(error)
     logerror = math.log(abserr)
 
-    return  logerror
+    return  F
 
+
+print(oneerror(4))
+
+
+'''
 print(oneerror(5))
 print(oneerror(4))
 print(oneerror(3))
-
-
 l_list = list(range(9))
 def errordf(llist):
     error = []
@@ -108,4 +111,7 @@ plt.ylabel('log error')
 plt.title('Plot of log error against l')
 plt.grid(True)
 plt.show()
+'''
+
+
 
