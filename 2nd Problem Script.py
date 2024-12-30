@@ -146,7 +146,7 @@ def oneerror(l):
 # print(oneerror(4))
 # print(oneerror(3))
 
-print(oneerror(2))
+print(oneerror(1))
 
 # l_list = list(range(8))
 # def errordf(llist):
