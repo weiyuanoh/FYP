@@ -132,8 +132,12 @@ def oneerror(l):
     n2 = 5
 
     A = matrix(ijlist = ijlist, matrix= matrixA, n1 = n1, l = l,xlist= x_list)
+    print("A:",A)
     F = finding_F(F_empty=matrixF, ijlist=ijlist, xlist=x_list, l = l, n2 = n2, n1 = n1)
+    print("F:", F)
     c = inv(matrix =A, F = F )
+    print("c:",  c)
+
     approximation = approx_new(ijlist=ijlist, c=c, F =F)
     print(approximation)
     error = actual - approximation
@@ -145,6 +149,7 @@ def oneerror(l):
 # print(oneerror(5))
 # print(oneerror(4))
 # print(oneerror(3))
+
 
 print(oneerror(1))
 
