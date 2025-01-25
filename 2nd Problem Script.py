@@ -15,6 +15,11 @@ b = 1
 
 def a0(x):
     return 2 + math.sin(x)
+# def a0(x):
+#     if 0 <= x < 1/3: 
+#         return 1.0 
+#     elif 1/3 <= x <= 1:
+#         return 2.0
 
 def GL(xi, ci, y, x, n2, func):
 	sum = 0 
@@ -95,6 +100,11 @@ def intergrand(numofnodes, i, l, xlist, f, ci, xi, n2):
 
 def f(s): 
     return -4 + math.cos(s)  - 2*s*math.cos(s) - 2* math.sin(s)
+# def f(s):
+#     if 0 <= s < 1/3:
+#         return 2.0
+#     elif 1/3 <= s <= 1:
+#         return 4.0
 
 def finding_F(F_empty, ijlist, xlist, l, n2, n1):
     xi = gl.gauleg(n2)[0]
@@ -144,30 +154,30 @@ def oneerror(l):
     abserr = abs(error)
     logerror = math.log(abserr)
 
-    return  error
+    return  logerror
 
 # print(oneerror(5))
 # print(oneerror(4))
 # print(oneerror(3))
 
 
-print(oneerror(1))
+#print(oneerror(6))
 
-# l_list = list(range(8))
-# def errordf(llist):
-#     error = []
-#     for l in llist:
-#         logerror = oneerror(l)
-#         error.append({'l': l, 'log error': logerror})
+l_list = list(range(6))
+def errordf(llist):
+    error = []
+    for l in llist:
+        logerror = oneerror(l)
+        error.append({'l': l, 'log error': logerror})
     
-#     df_errors = pd.DataFrame(error)
-#     return df_errors
+    df_errors = pd.DataFrame(error)
+    return df_errors
 
-# dataframe = errordf(l_list)
-# plt.figure(figsize=(16, 12))
-# plt.plot(dataframe['l'], dataframe['log error'], marker='o', linestyle='-')
-# plt.xlabel('l')
-# plt.ylabel('log error')
-# plt.title('Plot of log error against l')
-# plt.grid(True)
-# plt.show()
+dataframe = errordf(l_list)
+plt.figure(figsize=(16, 12))
+plt.plot(dataframe['l'], dataframe['log error'], marker='o', linestyle='-')
+plt.xlabel('l')
+plt.ylabel('log error')
+plt.title('Plot of log error against l')
+plt.grid(True)
+plt.show()
