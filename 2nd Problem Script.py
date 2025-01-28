@@ -154,7 +154,7 @@ def oneerror(l):
     abserr = abs(error)
     logerror = math.log(abserr)
 
-    return  logerror
+    return error
 
 # print(oneerror(5))
 # print(oneerror(4))
@@ -163,21 +163,95 @@ def oneerror(l):
 
 #print(oneerror(6))
 
-l_list = list(range(6))
-def errordf(llist):
-    error = []
-    for l in llist:
-        logerror = oneerror(l)
-        error.append({'l': l, 'log error': logerror})
+# l_list = list(range(6))
+# def errordf(llist):
+#     error = []
+#     for l in llist:
+#         logerror = oneerror(l)
+#         error.append({'l': l, 'log error': logerror})
     
-    df_errors = pd.DataFrame(error)
-    return df_errors
+#     df_errors = pd.DataFrame(error)
+#     return df_errors
 
-dataframe = errordf(l_list)
-plt.figure(figsize=(16, 12))
-plt.plot(dataframe['l'], dataframe['log error'], marker='o', linestyle='-')
-plt.xlabel('l')
-plt.ylabel('log error')
-plt.title('Plot of log error against l')
+# dataframe = errordf(l_list)
+# plt.figure(figsize=(16, 12))
+# plt.plot(dataframe['l'], dataframe['log error'], marker='o', linestyle='-')
+# plt.xlabel('l')
+# plt.ylabel('log error')
+# plt.title('Plot of log error against l')
+# plt.grid(True)
+# plt.show()
+
+def exact_solution(x):
+    return x*(1.0 - x)
+x_fine = np.linspace(0.0, 1.0, 200)
+u_exact = exact_solution(x_fine)
+
+plt.figure(figsize=(6,4))
+
+def sol(l):
+    h = 2 **(-l)
+    n1 = 2**l + 1
+    ijlist = list(range(2**l - 1))
+    x_list = gl.listi(a, b, h, n1)
+    dim = 2**l -1
+    matrixF = sp.zeros(dim, 1)
+    matrixA= sp.zeros(dim, dim)
+    n2 = 5
+
+    A = matrix(ijlist = ijlist, matrix= matrixA, n1 = n1, l = l,xlist= x_list)
+    print("A:",A)
+    F = finding_F(F_empty=matrixF, ijlist=ijlist, xlist=x_list, l = l, n2 = n2, n1 = n1)
+    print("F:", F)
+    c = inv(matrix =A, F = F )
+    print("c:",  c)
+    return -c, x_list
+
+def assemble_nodal_values(C):
+    """
+    Given:
+      C = [U_1, U_2, ..., U_{N-1}]  from the system solve
+    Returns:
+      U_full = [U_0, U_1, U_2, ..., U_{N-1}, U_N]  (with BCs)
+    """
+    N_minus_1 = len(C)          # number of interior unknowns
+    U_full = [0]*(N_minus_1+2)  # +2 for endpoints
+    U_full[0] = 0.0            # Dirichlet BC at x_0
+    U_full[-1] = 0.0           # Dirichlet BC at x_N
+    
+    # Fill in interior:
+    for i in range(N_minus_1):
+        U_full[i+1] = C[i]
+    
+    return U_full
+
+c_sol, mesh = sol(6)
+nodal = assemble_nodal_values(c_sol)
+x_nodal = np.array(mesh, dtype=float)
+u_nodal = np.array(nodal, dtype=float)
+
+# 1) Plot the piecewise-linear solution
+plt.plot(
+    x_nodal,
+    u_nodal,
+    marker='o',
+    linestyle='-',
+    color='blue',
+    label='Numerical (Refined Mesh)'
+)
+
+# 2) Plot the exact solution as a smooth curve
+plt.plot(
+    x_fine,
+    u_exact,
+    color='red',
+    linewidth=2,
+    label='Exact: x(1-x)'
+)
+
+plt.xlabel('x')
+plt.ylabel('u(x)')
+plt.title('Refined Numerical Solution vs. Exact')
 plt.grid(True)
+plt.legend()
 plt.show()
