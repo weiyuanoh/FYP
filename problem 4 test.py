@@ -345,6 +345,11 @@ def energy_norm(approximation):
     energy_norm = actual - approximation
     return energy_norm
 
+# matrixS1_Amn = A_S1(matrixA=A_matrix(n=[0],m=[0]), matrixS1=S1(func= a1, mesh = gl.listi(0,1, 2**(-6), 2**(6)+1)))          # = kronecker(A, S1_mat)
+# matrixS0_delta = S0_delta(matrixS0=S0(func = a0, mesh = gl.listi(0,1, 2**(-6), 2**(6)+1)), matrixdelta=delta(n=[0],m=[0]))
+# S = S_in_jm(matrixS1_Amn, matrixS0_delta) # S = matrixS0_delta + matrixS1_Amn
+# print(S)
+
 def solve_scF_once(n_list, m_list, mesh):
     """
     Build and solve the system S*C = F for a single iteration.
@@ -364,13 +369,13 @@ def solve_scF_once(n_list, m_list, mesh):
     matrixS1_Amn = A_S1(matrixA=A_matrix(n_list,m_list), matrixS1=S1(func= a1, mesh = mesh))          # = kronecker(A, S1_mat)
     matrixS0_delta = S0_delta(matrixS0=S0(func = a0, mesh = mesh), matrixdelta=delta(n_list,m_list))
     S = S_in_jm(matrixS1_Amn, matrixS0_delta) # S = matrixS0_delta + matrixS1_Amn
-
+    print(S)
     # 2) Build the right-hand side vector F
     Fvec = build_force_vector2(num_nodes=len(mesh), xlist = mesh, f = f)
-
+    print(Fvec)
     # 3) Solve S*C = F for C
     C_sol = C(S, Fvec)  # calls your function C(...) which does: S_inv = S.inv(); C = S_inv*F
-
+    print(C_sol)
 
     return C_sol, Fvec
 
@@ -391,8 +396,8 @@ def assemble_nodal_values(C):
         U_full[i+1] = C[i]
     
     return U_full
-n = [0,1]
-m = [0,1]
+n = [0]
+m = [0]
 c_sol =solve_scF_once(n_list=n, m_list=m, mesh = gl.listi(0, 1, 2 **(-6), 2**6 + 1))[0]
 nodal = assemble_nodal_values(c_sol)
 x_nodal = np.array(gl.listi(0, 1, 2 **(-6), 2**6 + 1), dtype=float)
