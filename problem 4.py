@@ -57,9 +57,9 @@ def a(x, y):
 #     return 2 + math.sin(x)
 
 def a0(x):
-    if 0 <= x < 1/3:
+    if 0 <= x < 0.1:
         return 1.0 
-    elif 1/3 <= x <= 1:
+    elif 0.1 <= x <= 1:
         return 2.0
 
 # def a0(x):
@@ -91,7 +91,7 @@ def piecewise_GL(integrand, x_left, x_right, n2):
       [x_left, 1/3]  and  [1/3, x_right]
     and sum the results.
     """
-    discont = 1/3
+    discont = 0.1
     xi, ci = gl.gauleg(n2) 
     # If the entire interval is on one side of 1/3, do one normal G-L integral
     if x_right <= discont or x_left >= discont:
@@ -261,9 +261,9 @@ def integrand_for_force(i, xlist, f, xi, ci, n2):
 #     return 2* (2 + math.sin(s)) - math.cos(s) *(1 -2*s)
 
 def f(s):
-    if 0 <= s < 1/3:
+    if 0 <= s < 0.1:
         return 2.0
-    elif 1/3 <= s <= 1:
+    elif 0.1 <= s <= 1:
         return 4.0
 
 # def f(s):
@@ -298,7 +298,7 @@ def build_force_vector2(num_nodes, xlist, f):
     # handling the 1/3 discontinuity
     def piecewise_integral(a, b, i):
         # if entire [a,b] is below 1/3 or above 1/3, do one G-L integral
-        discont = 1/3
+        discont = 0.1
         if b <= discont or a >= discont:
             return gauss_legendre_integrate(a, b, i) 
         # otherwise split at x=1/3
@@ -394,9 +394,9 @@ def r(x_num, mesh, uh):
     # 'uh' and 'mesh' not strictly needed to compute a'(x), since a'(x)=0 except at 0.5.
     # The interior PDE says r(x) = f(x) + slope*a'(x). But a'(x)=0 almost everywhere,
     # so r(x) is just f(x).
-    if 0 <= x_num < 1/3:
+    if 0 <= x_num < 0.1:
         return 2.0
-    elif 1/3 <= x_num <= 1:
+    elif 0.1 <= x_num <= 1:
         return 4.0
 
 
@@ -418,7 +418,7 @@ def piecewise_GL(integrand, x_left, x_right, n2):
       [x_left, 1/3]  and  [1/3, x_right]
     and sum the results.
     """
-    discont = 1/3
+    discont = 0.1
     xi, ci = gl.gauleg(n2) 
     # If the entire interval is on one side of 1/3, do one normal G-L integral
     if x_right <= discont or x_left >= discont:
@@ -525,7 +525,7 @@ def j2(mesh, uh, i):
     slope_right = slope_at_node(mesh, uh, i+1, 'right')
     slope_left  = slope_at_node(mesh, uh, i+1, 'left')
     
-    discont = 1/3
+    discont = 0.1
     # Decide which "a0" to use for each side
     # if x_num < discont => both sides use a=1
     # if x_num > discont => both sides use a=2
