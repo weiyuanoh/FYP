@@ -146,7 +146,7 @@ def S1_ji(func, mesh):
 def S0_ji(func, mesh):
     N = len(mesh)
     S0_mat = sp.zeros(N, N)
-    n2 = 5
+    n2 = 10
     # assembly of diagonal entries of S0 
     for j in range(N):
             diag_val = 0.0
@@ -327,52 +327,6 @@ def c(S_int, F_int):
         c = S_int.LUsolve(F_int)
         return c
 
-
-def approx_new(c, F):
-    approx_new = c.T *F
-
-    return approx_new[0,0]
-
-
-def energy_norm(approximation):
-    actual = 47/81
-    energy_norm = actual - approximation
-    return energy_norm
-
-
-def solve_scF_once(n_list, m_list, mesh):
-    """
-    Build and solve the system S*C = F for a single iteration.
-
-    Parameters
-    ----------
-    n_list, m_list : lists of indices (e.g. polynomial degrees)
-    i_list         : indices for the piecewise-constant or piecewise-linear basis
-
-    Returns
-    -------
-    C : Sympy Matrix
-        The solution vector for the unknowns.
-    """
-
-    # Build the big Kronecker products
-    matrixS1_Amn = A_S1(matrixA=A_matrix(n,m), matrixS1=S1_ji(func= a1, mesh = mesh))          # = kronecker(A, S1_mat)
-    matrixS0_delta = S0_delta(matrixS0=S0_ji(func = a0, mesh = mesh), matrixdelta=delta(n,m))
-    S = S_in_jm(matrixS1_Amn, matrixS0_delta) # S = matrixS0_delta + matrixS1_Amn
-
-    # 2) Build the right-hand side vector F
-    Fvec = build_force_vector(f, mesh, n2 =5)
-
-
-    # 3) Extracting of interior nodes 
-    S_int, F_int = extract_interior(S, Fvec)
-    C_sol = c(S_int, F_int)  # calls your function C(...) which does: S_inv = S.inv(); C = S_inv*F
-
-    return C_sol, Fvec, F_int
-
-
-    return mesh, c_sol, enorm_history
-
 def assemble_nodal_values(C):
     """
     Given:
@@ -390,14 +344,20 @@ def assemble_nodal_values(C):
         U_full[i+1] = C[i]
     
     return U_full
-n = [0]
-m = [0]
-c_sol =solve_scF_once(n_list=n, m_list=m, mesh = gl.listi(0, 1, 2 **(-4), 2**4 + 1))[0]
-
+mesh = gl.listi(0,1, 2**(-1), 2**1 + 1)
+S0 = S0_ji(func = a0, mesh = mesh)
+fvect = build_force_vector(f, mesh, 5)
+S0_int, f_int = extract_interior(S0, fvect)
+c_sol = c(S0_int, f_int)
 nodal = assemble_nodal_values(c_sol)
-x_nodal = np.array(gl.listi(0, 1, 2 **(-4), 2**4 + 1), dtype=float)
+x_nodal = np.array(mesh, dtype=float)
 u_nodal = np.array(nodal, dtype=float)
 
+
+print("S0:", S0)
+print("S0_int:", S0_int)
+print("Full F:", fvect)
+print("F_int:", f_int)
 def exact_solution(x):
     return x*(1.0 - x)
 
