@@ -37,9 +37,12 @@ def a0(x, beta):
     return np.where((x >= (x_star - r)) & (x <= (x_star + r)), 2.0, 1.0)
 
 
+# def f(x, beta):
+#     x = np.asarray(x)
+#     return a0(x, beta) * np.pi**2 * np.sin(np.pi * x)
+
 def f(x, beta):
     return 1.0
-
 n2 =5
 
 ####################################
@@ -203,7 +206,7 @@ def refinement_loop(epsilon, beta):
     4) If all errors < epsilon, done. Else refine, go back to step 2.
     """
     mesh = np.linspace(0.0, 1.0, 8).tolist()
-
+    print("initial mesh:", mesh)
     # Keep track of (mesh, energy_norm) in each iteration
     iteration_index = 0
     while True:
@@ -225,12 +228,13 @@ def refinement_loop(epsilon, beta):
             break
         # Refine the mesh only on the marked elements.
         new_mesh = element_refinement(mesh, elements_to_refine)
-        print("new mesh:", new_mesh)
+
         # Check if the new mesh has any element with length smaller than min_element_length.
         mesh_array = np.array(new_mesh, dtype=float)
 
         min_element_length=1e-20
-
+        print("New mesh:", new_mesh)
+        print("Element lengths:", np.diff(mesh_array))
         if np.min(np.diff(mesh_array)) < min_element_length:
             print("Minimum element length reached; terminating refinement.")
             break
@@ -239,6 +243,7 @@ def refinement_loop(epsilon, beta):
             break
         mesh = new_mesh
         iteration_index += 1
+        print("iteration_index:", iteration_index)
     # After loop, final solution is c_sol on final mesh
     # Return everything, including the entire history
     return mesh, c_sol
@@ -479,7 +484,7 @@ def element_refinement(mesh, element_indices):
     midpoints = 0.5 * (mesh_arr[element_indices] + mesh_arr[element_indices + 1])
     
     # Concatenate the original mesh with the new midpoints, then sort.
-    new_mesh = np.unique(np.sort(np.concatenate((mesh_arr, midpoints))))
+    new_mesh = np.sort(np.concatenate((mesh_arr, midpoints)))
     return new_mesh.tolist()
 
 
@@ -489,7 +494,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 beta = np.array([0.5, 1/6])
-mesh, c_sol= refinement_loop(epsilon=0.001, beta= beta)
+mesh, c_sol= refinement_loop(epsilon=0.000001, beta= beta)
 
 
 nodal = assemble_nodal_values(c_sol)  
