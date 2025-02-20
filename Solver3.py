@@ -40,9 +40,10 @@ def a0(x, beta):
 # def f(x, beta):
 #     x = np.asarray(x)
 #     return a0(x, beta) * np.pi**2 * np.sin(np.pi * x)
-
 def f(x, beta):
-    return 1.0
+    x = np.asarray(x)
+    return np.ones_like(x)
+
 n2 =5
 
 ####################################
@@ -144,8 +145,9 @@ def phi_i(i, x, mesh):
 
 
 def assemble_nodal_values(C):
-    C = np.asarray(C)  # Ensure C is a NumPy array.
+    C = np.asarray(C) # Make sure C is 1D.
     return np.concatenate(([[0.0]], C, [[0.0]]))
+
 
 def get_discont_points(x_left, x_right, beta):
     """
@@ -205,7 +207,7 @@ def refinement_loop(epsilon, beta):
     3) Estimate errors
     4) If all errors < epsilon, done. Else refine, go back to step 2.
     """
-    mesh = np.linspace(0.0, 1.0, 8).tolist()
+    mesh = np.linspace(0.0, 1.0, 100).tolist()
     print("initial mesh:", mesh)
     # Keep track of (mesh, energy_norm) in each iteration
     iteration_index = 0
@@ -222,6 +224,7 @@ def refinement_loop(epsilon, beta):
         # Mark which elements to refine
         elements_to_refine = element_selection(errors=errors, epsilon=epsilon)
         #elements_to_refine = dorfler_marking(errors, 0.9)
+        
 
         # If no elements exceed threshold => done
         if not elements_to_refine:
@@ -229,21 +232,12 @@ def refinement_loop(epsilon, beta):
         # Refine the mesh only on the marked elements.
         new_mesh = element_refinement(mesh, elements_to_refine)
 
-        # Check if the new mesh has any element with length smaller than min_element_length.
-        mesh_array = np.array(new_mesh, dtype=float)
-
-        min_element_length=1e-20
-        print("New mesh:", new_mesh)
-        print("Element lengths:", np.diff(mesh_array))
-        if np.min(np.diff(mesh_array)) < min_element_length:
-            print("Minimum element length reached; terminating refinement.")
-            break
         if new_mesh == mesh:
             print("Mesh did not change upon refinement. Terminating.")
             break
         mesh = new_mesh
         iteration_index += 1
-        print("iteration_index:", iteration_index)
+   
     # After loop, final solution is c_sol on final mesh
     # Return everything, including the entire history
     return mesh, c_sol
@@ -490,52 +484,52 @@ def element_refinement(mesh, element_indices):
 
 
 
-import numpy as np
-import matplotlib.pyplot as plt
+# import numpy as np
+# import matplotlib.pyplot as plt
 
-beta = np.array([0.5, 1/6])
-mesh, c_sol= refinement_loop(epsilon=0.000001, beta= beta)
+# beta = np.array([0.5, 1/6])
+# mesh, c_sol= refinement_loop(epsilon=0.000001, beta= beta)
 
 
-nodal = assemble_nodal_values(c_sol)  
+# nodal = assemble_nodal_values(c_sol)  
 
-x_nodal = np.array(mesh, dtype=float)
-u_nodal = np.array(nodal, dtype=float)
+# x_nodal = np.array(mesh, dtype=float)
+# u_nodal = np.array(nodal, dtype=float)
 
-# Define the exact solution
-def exact_solution(x):
-    x = np.asarray(x)
-    return np.sin(np.pi*x)
+# # Define the exact solution
+# def exact_solution(x):
+#     x = np.asarray(x)
+#     return np.sin(np.pi*x)
 
-# We'll plot the exact solution on a fine grid from 0..1
-x_fine = np.linspace(0.0, 1.0, 200)
-u_exact = exact_solution(x_fine)
+# # We'll plot the exact solution on a fine grid from 0..1
+# x_fine = np.linspace(0.0, 1.0, 200)
+# u_exact = exact_solution(x_fine)
 
-plt.figure(figsize=(16,12))
+# plt.figure(figsize=(16,12))
 
-# 1) Plot the piecewise-linear solution
-plt.plot(
-    x_nodal,
-    u_nodal,
-    marker='x',
-    linestyle='-',
-    color='blue',
-    label='Numerical (Refined Mesh)'
-)
-
-# # 2) Plot the exact solution as a smooth curve
+# # 1) Plot the piecewise-linear solution
 # plt.plot(
-#     x_fine,
-#     u_exact,
-#     color='red',
-#     linewidth=2,
-#     label='Exact: sin(pi x)'
+#     x_nodal,
+#     u_nodal,
+#     marker='x',
+#     linestyle='-',
+#     color='blue',
+#     label='Numerical (Refined Mesh)'
 # )
-plt.axvline(x=1/3, color='r', linestyle='--', linewidth=2, label="x = 1/3")
-plt.axvline(x=2/3, color='r', linestyle='--', linewidth=2, label="x = 2/3")
-plt.xlabel('x')
-plt.ylabel('u(x)')
-plt.title('Refined Numerical Solution vs. Exact')
-plt.grid(True)
-plt.legend()
-plt.show()
+
+# # # 2) Plot the exact solution as a smooth curve
+# # plt.plot(
+# #     x_fine,
+# #     u_exact,
+# #     color='red',
+# #     linewidth=2,
+# #     label='Exact: sin(pi x)'
+# # )
+# plt.axvline(x=1/3, color='r', linestyle='--', linewidth=2, label="x = 1/3")
+# plt.axvline(x=2/3, color='r', linestyle='--', linewidth=2, label="x = 2/3")
+# plt.xlabel('x')
+# plt.ylabel('u(x)')
+# plt.title('Refined Numerical Solution vs. Exact')
+# plt.grid(True)
+# plt.legend()
+# plt.show()
