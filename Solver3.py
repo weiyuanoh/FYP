@@ -200,15 +200,17 @@ def solve_scF_once(mesh, beta):
 
     return c_sol, fvect
 
-def refinement_loop(epsilon, beta, num_points):
+def refinement_loop(epsilon, beta):
     """
     1) Start with initial mesh
     2) Solve once
     3) Estimate errors
     4) If all errors < epsilon, done. Else refine, go back to step 2.
     """
-    mesh = np.linspace(0.0, 1.0, num_points).tolist()
-
+    mesh = np.linspace(0.0, 1.0, 4).tolist()
+    ddof = len(mesh) - 2
+    ddof_list = []
+    
 
     iteration_index = 0
     while True:
@@ -237,10 +239,11 @@ def refinement_loop(epsilon, beta, num_points):
             break
         mesh = new_mesh
         iteration_index += 1
-   
+        ddof += len(new_mesh) - 2
+
     # After loop, final solution is c_sol on final mesh
     # Return everything, including the entire history
-    return mesh, c_sol
+    return mesh, c_sol, ddof
 
 
 ###################################
