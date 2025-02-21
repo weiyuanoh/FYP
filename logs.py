@@ -37,7 +37,7 @@ def generate_run_id(params):
     # Create a custom run_id using timestamp and parameters.
     run_id = (
         f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_"
-        f"beta={beta_str}_"
+        f"beta_true={beta_str}_"
         f"iter={params['number_of_iter']}_"
         f"burn={params['burn_in']}_"
         f"sigma={params['sigma']}_"
@@ -46,7 +46,7 @@ def generate_run_id(params):
     )
     return run_id
 def run_MCMC(beta_true, number_of_iter, burn_in, sigma, num_points):
-    chain, beta_mcmc, acceptance_history, acceptance_count = bi.MCMC(beta_true, number_of_iter, burn_in, sigma, num_points)
+    chain, beta_mcmc, acceptance_count = bi.MCMC(beta_true, number_of_iter, burn_in, sigma, num_points)
 
     params = {
         'beta_true': beta_true,
@@ -62,7 +62,6 @@ def run_MCMC(beta_true, number_of_iter, burn_in, sigma, num_points):
     results = {
         'chain': chain,
         'beta_mcmc': beta_mcmc,
-        'acceptance_history': acceptance_history,
         'acceptance_count': acceptance_count
     }
 

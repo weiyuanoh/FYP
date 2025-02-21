@@ -76,16 +76,17 @@ def phi(observations, predicted, sigma, num_points) :
     '''
     covariance_matrix = cov_matrix(sigma, num_points)
     diff = predicted - observations
-    covariance_matrix_inv = np.linalg.inv(covariance_matrix) # this supposed to be identity
+    covariance_matrix_inv = np.linalg.inv(covariance_matrix) 
     val = 0.5 * diff.T @ covariance_matrix_inv @ diff
     return val
+
 
 def compute_A(phi_0, phi_i, sigma):
 
     val = np.exp(phi_0 - phi_i)
     
     return val
-
+  
 def MCMC(beta_true, number_of_iter, burn_in, sigma, num_points): 
     '''
     Builds a Markov Chain 
@@ -100,13 +101,13 @@ def MCMC(beta_true, number_of_iter, burn_in, sigma, num_points):
         - set alpha = min{1, likelihood }
     '''
     # set seed 
-    np.random.seed(42)
+    np.random.seed(80)
     # range of uniform distribution 
     x_star_range = (0.3, 0.7) 
     r_range = (0.1, 0.2) 
     chain = []
     # compute delta 
-    mesh_true , c_sol_true = sl.refinement_loop(0.0001, beta_true) 
+    mesh_true , c_sol_true = sl.refinement_loop(0.0001, beta_true, num_points) 
     y_true = interpolation_for_u_h(c_sol_true, mesh_true, num_points)
     delta = add_noise(y_true, num_points, sigma)
 
@@ -119,7 +120,7 @@ def MCMC(beta_true, number_of_iter, burn_in, sigma, num_points):
     print("Beta_0:", beta_0)
     
     # initialise current observations and likelihood 
-    mesh_0, c_sol_0 = sl.refinement_loop(0.01, beta = beta_0)
+    mesh_0, c_sol_0 = sl.refinement_loop(0.01, beta = beta_0, num_points= num_points)
     y_0 = interpolation_for_u_h(c_sol_0, mesh_0, num_points)
     phi_0 = phi(delta, y_0, sigma, num_points)
     print("phi_0:", phi_0)
@@ -134,7 +135,7 @@ def MCMC(beta_true, number_of_iter, burn_in, sigma, num_points):
             np.random.uniform(*r_range)
         ])
         print("beta proposal:", beta_proposal)
-        mesh_proposal, c_sol_proposal = sl.refinement_loop(0.01, beta = beta_proposal)
+        mesh_proposal, c_sol_proposal = sl.refinement_loop(0.01, beta = beta_proposal, num_points= num_points)
         y_proposal = interpolation_for_u_h(c_sol_proposal, mesh_proposal, num_points)
         phi_proposal = phi(delta, y_proposal, sigma, num_points)
         print("phi proposal:", phi_proposal)
@@ -159,17 +160,17 @@ def MCMC(beta_true, number_of_iter, burn_in, sigma, num_points):
     # Compute the MCMC estimate as the mean of the samples after burn-in.
     beta_mcmc = np.mean(chain[burn_in:], axis=0)
     
-    return chain, beta_mcmc, acceptance_prob_history, acceptance_count
+    return chain, beta_mcmc, acceptance_count
 
 
 # number_of_iter = 100
-# burn_in = 10
+# burn_in = 50
 # sigma = 0.01
 # num_points = 100
 # beta_true = np.array([0.65, 0.15])
 
-# chain, beta_mcmc, acceptance_history, acceptance_count = MCMC(beta_true, number_of_iter, burn_in, sigma, num_points)
+# chain, beta_mcmc, acceptance_count = MCMC(beta_true, number_of_iter, burn_in, sigma, num_points)
 # print("True beta:", beta_true )
 # print("MCMC estimated beta:", beta_mcmc)
-# print("Acceptance Probability History:", acceptance_history)
+# # print("Acceptance Probability History:", acceptance_history)
 # print("Acceptance Count:", acceptance_count)
