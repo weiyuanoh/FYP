@@ -209,8 +209,6 @@ def refinement_loop(epsilon, beta):
     """
     mesh = np.linspace(0.0, 1.0, 4).tolist()
     ddof = len(mesh) - 2
-    ddof_list = []
-    
 
     iteration_index = 0
     while True:
@@ -490,8 +488,9 @@ def element_refinement(mesh, element_indices):
 # import numpy as np
 # import matplotlib.pyplot as plt
 
-# beta = np.array([0.5, 1/6])
-# mesh, c_sol= refinement_loop(epsilon=0.000001, beta= beta)
+# beta = np.array([0.65, 0.15])
+
+# mesh, c_sol, ddof= refinement_loop(epsilon=0.0001, beta= beta)
 
 
 # nodal = assemble_nodal_values(c_sol)  
@@ -528,8 +527,8 @@ def element_refinement(mesh, element_indices):
 # #     linewidth=2,
 # #     label='Exact: sin(pi x)'
 # # )
-# plt.axvline(x=1/3, color='r', linestyle='--', linewidth=2, label="x = 1/3")
-# plt.axvline(x=2/3, color='r', linestyle='--', linewidth=2, label="x = 2/3")
+# # plt.axvline(x=1/3, color='r', linestyle='--', linewidth=2, label="x = 1/3")
+# # plt.axvline(x=2/3, color='r', linestyle='--', linewidth=2, label="x = 2/3")
 # plt.xlabel('x')
 # plt.ylabel('u(x)')
 # plt.title('Refined Numerical Solution vs. Exact')
