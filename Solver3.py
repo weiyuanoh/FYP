@@ -208,7 +208,7 @@ def refinement_loop(epsilon, beta):
     4) If all errors < epsilon, done. Else refine, go back to step 2.
     """
     mesh = np.linspace(0.0, 1.0, 4).tolist()
-    ddof = len(mesh) - 2
+    #ddof = len(mesh) - 2
 
     iteration_index = 0
     while True:
@@ -237,7 +237,7 @@ def refinement_loop(epsilon, beta):
             break
         mesh = new_mesh
         iteration_index += 1
-        ddof += len(new_mesh) - 2
+        ddof = len(new_mesh) - 2
 
     # After loop, final solution is c_sol on final mesh
     # Return everything, including the entire history
