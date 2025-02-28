@@ -1,6 +1,7 @@
 import numpy as np 
 import matplotlib.pyplot as plt
 import Solver3 as sl 
+import multiprocessing as mp
 
 
 def cov_matrix(sigma, num_points):
@@ -98,7 +99,8 @@ def compute_A(phi_0, phi_i, sigma):
   val = np.exp(phi_0 - phi_i)
   return val
   
-def MCMC(beta_true, number_of_iter, burn_in, sigma, num_points): 
+
+def MCMC_AFEM(beta_true, number_of_iter, burn_in, sigma, num_points): 
   '''
   Builds a Markov Chain 
 
@@ -117,7 +119,7 @@ def MCMC(beta_true, number_of_iter, burn_in, sigma, num_points):
   x_star_range = (0.3, 0.7) 
   r_range = (0.1, 0.2) 
   chain = []
-  ddof_list = []
+  ddof_list = 0
   # compute delta 
   mesh_true , c_sol_true, ddof_true= sl.refinement_loop(0.00001, beta_true) 
   y_true = fe_solution_at_obs(c_sol_true, mesh_true, np.linspace(0.0, 1.0, num_points))
@@ -136,7 +138,6 @@ def MCMC(beta_true, number_of_iter, burn_in, sigma, num_points):
   y_0 = fe_solution_at_obs(c_sol_0, mesh_0, np.linspace(0.0, 1.0, num_points))
   phi_0 = phi(delta, y_0, sigma, num_points)
   print("phi_0:", phi_0)
-  ddof_list.append((beta_0, ddof_0))
   
   iter_count = 0
   acceptance_count = 0 
@@ -150,7 +151,6 @@ def MCMC(beta_true, number_of_iter, burn_in, sigma, num_points):
     print("beta proposal:", beta_proposal)
     mesh_proposal, c_sol_proposal, ddof_proposal = sl.refinement_loop(0.001, beta = beta_proposal)
     y_proposal = fe_solution_at_obs(c_sol_proposal, mesh_proposal, np.linspace(0.0, 1.0, num_points))
-    ddof_list.append((beta_proposal, ddof_proposal))
     phi_proposal = phi(delta, y_proposal, sigma, num_points)
     print("phi proposal:", phi_proposal)
     # compute acceptance probability 
@@ -164,29 +164,211 @@ def MCMC(beta_true, number_of_iter, burn_in, sigma, num_points):
       beta_0 = beta_proposal # update the current state as the last accepted proposal
       y_0 = y_proposal # update the current observations to the last accepted observation
       phi_0 = phi_proposal
+      ddof_0 = ddof_proposal
       acceptance_count += 1
     
     # Record the current state.
     chain.append(beta_0.copy())
     print("Chain length:", len(chain))
+    ddof_list += ddof_0
       
-  
+  avg_ddof = ddof_list/len(chain)
   chain = np.array(chain)
   # Compute the MCMC estimate as the mean of the samples after burn-in.
   beta_mcmc = np.mean(chain[burn_in:], axis=0)
   
-  return chain, beta_mcmc, acceptance_count, ddof_list
+  return chain, beta_mcmc, acceptance_count, avg_ddof
+
+def MCMC(beta_true, number_of_iter, burn_in, sigma, num_points):
+    '''
+    Builds two MCMC chains (one using AFEM and one using a uniform mesh) using the same sequence of proposed β.
+    
+    Parameters:
+      beta_true      : The true parameter used to generate the true data.
+      number_of_iter : Total number of MCMC iterations.
+      burn_in        : Number of iterations to discard as burn-in.
+      sigma          : Noise standard deviation.
+      num_points     : Number of observation points.
+    
+    Returns:
+      chain_afem, beta_mcmc_afem, acceptance_prob_history_afem, acceptance_count_afem,
+      chain_uniform, beta_mcmc_uniform, acceptance_prob_history_uniform, acceptance_count_uniform,
+      ddof_list
+    '''
+    
+    # Define proposal ranges:
+    x_star_range = (0.3, 0.7)
+    r_range = (0.1, 0.2)
+    
+    # Initialize lists to store chain history and diagnostic info:
+    chain_afem = []
+    chain_uniform = []
+    ddof_list = []
+    
+    # Compute true data (delta) for both forward models:
+    mesh_true, c_sol_true, ddof_true = sl.refinement_loop(0.00001, beta_true)
+    y_true = fe_solution_at_obs(c_sol_true, mesh_true, np.linspace(0.0, 1.0, num_points))
+    delta = add_noise(y_true, num_points, sigma)
+    
+    uniform_mesh = np.linspace(0.0, 1.0, 129)  # 128 elements => 129 nodes
+    c_sol_uniform_true, fvect_true_uniform = sl.solve_scF_once(uniform_mesh, beta_true)
+    y_true_uniform = fe_solution_at_obs(c_sol_uniform_true, uniform_mesh, np.linspace(0.0, 1.0, num_points))
+    delta_uniform = add_noise(y_true_uniform, num_points, sigma)
+    
+    # Draw initial beta (common initial state for both chains)
+    beta_0 = np.array([np.random.uniform(*x_star_range),
+                       np.random.uniform(*r_range)])
+    print("Beta_0:", beta_0)
+    
+    # Initialize current state for AFEM chain:
+    beta_current_afem = beta_0.copy()
+    mesh_0, c_sol_0, ddof_0 = sl.refinement_loop(0.001, beta=beta_0)
+    y_current_afem = fe_solution_at_obs(c_sol_0, mesh_0, np.linspace(0.0, 1.0, num_points))
+    phi_current_afem = phi(delta, y_current_afem, sigma, num_points)
+    
+    # Initialize current state for Uniform FEM chain:
+    beta_current_uniform = beta_0.copy()
+    c_sol_0_uniform, fvect_0_uniform = sl.solve_scF_once(uniform_mesh, beta_0)
+    y_current_uniform = fe_solution_at_obs(c_sol_0_uniform, uniform_mesh, np.linspace(0.0, 1.0, num_points))
+    phi_current_uniform = phi(delta_uniform, y_current_uniform, sigma, num_points)
+    
+    acceptance_count_afem = 0
+    acceptance_count_uniform = 0
+    acceptance_prob_history_afem = []
+    acceptance_prob_history_uniform = []
+    
+    # MCMC loop:
+    for i in range(number_of_iter):
+        # Generate a common proposal for β:
+        beta_proposal = np.array([np.random.uniform(*x_star_range),
+                                  np.random.uniform(*r_range)])
+        print("beta proposal:", beta_proposal)
+        
+        # Evaluate proposal with AFEM:
+        mesh_proposal_afem, c_sol_proposal_afem, ddof_proposal_afem = sl.refinement_loop(0.001, beta=beta_proposal)
+        y_proposal_afem = fe_solution_at_obs(c_sol_proposal_afem, mesh_proposal_afem, np.linspace(0.0, 1.0, num_points))
+        ddof_list.append((beta_proposal, ddof_proposal_afem))
+        phi_proposal_afem = phi(delta, y_proposal_afem, sigma, num_points)
+        print("phi proposal (AFEM):", phi_proposal_afem)
+        A_afem = compute_A(phi_current_afem, phi_proposal_afem, sigma)
+        acceptance_prob_afem = min(1, A_afem)
+        acceptance_prob_history_afem.append(acceptance_prob_afem)
+        print("acceptance probability (AFEM):", acceptance_prob_afem)
+        
+        # Evaluate proposal with Uniform FEM:
+        c_sol_proposal_uniform, fvect_proposal_uniform = sl.solve_scF_once(uniform_mesh, beta=beta_proposal)
+        y_proposal_uniform = fe_solution_at_obs(c_sol_proposal_uniform, uniform_mesh, np.linspace(0.0, 1.0, num_points))
+        phi_proposal_uniform = phi(delta_uniform, y_proposal_uniform, sigma, num_points)
+        print("phi proposal (Uniform FEM):", phi_proposal_uniform)
+        A_uniform = compute_A(phi_current_uniform, phi_proposal_uniform, sigma)
+        acceptance_prob_uniform = min(1, A_uniform)
+        acceptance_prob_history_uniform.append(acceptance_prob_uniform)
+        print("acceptance probability (Uniform FEM):", acceptance_prob_uniform)
+        
+        # For AFEM chain, use an independent random draw:
+        if np.random.rand() < acceptance_prob_afem:
+            beta_current_afem = beta_proposal.copy()
+            y_current_afem = y_proposal_afem.copy()
+            phi_current_afem = phi_proposal_afem
+            acceptance_count_afem += 1
+        
+        # For Uniform FEM chain, use another independent random draw:
+        if np.random.rand() < acceptance_prob_uniform:
+            beta_current_uniform = beta_proposal.copy()
+            y_current_uniform = y_proposal_uniform.copy()
+            phi_current_uniform = phi_proposal_uniform
+            acceptance_count_uniform += 1
+        
+        # Record the current states in their respective chains:
+        chain_afem.append(beta_current_afem.copy())
+        chain_uniform.append(beta_current_uniform.copy())
+        print("Chain lengths: AFEM =", len(chain_afem), ", Uniform =", len(chain_uniform))
+    
+    chain_afem = np.array(chain_afem)
+    chain_uniform = np.array(chain_uniform)
+    beta_mcmc_afem = np.mean(chain_afem[burn_in:], axis=0)
+    beta_mcmc_uniform = np.mean(chain_uniform[burn_in:], axis=0)
+    
+    return (chain_afem, beta_mcmc_afem, acceptance_prob_history_afem, acceptance_count_afem,
+            chain_uniform, beta_mcmc_uniform, acceptance_prob_history_uniform, acceptance_count_uniform,
+            ddof_list)
 
 
-# number_of_iter = 10000
-# burn_in = 2000
-# sigma = 0.01
-# num_points = 100
-# beta_true = np.array([0.65, 0.15])
+def run_single_chain(seed, beta_true, number_of_iter, burn_in, sigma, num_points):
+    # Print a start message for this chain.
+    print(f"Starting chain with seed {seed}", flush=True)
+    
+    # Set the random seed to ensure independent chains.
+    np.random.seed(seed)
+    result = MCMC(beta_true, number_of_iter, burn_in, sigma, num_points)
+    
+    # Print a finish message for this chain.
+    print(f"Finished chain with seed {seed}", flush=True)
+    return result  # expected to be (chain, beta_mcmc, acceptance_history, acceptance_count)
 
-# chain, beta_mcmc, acceptance_count, ddof_list = MCMC(beta_true, number_of_iter, burn_in, sigma, num_points)
-# print("True beta:", beta_true )
-# print("MCMC estimated beta:", beta_mcmc)
-# # print("Acceptance Probability History:", acceptance_history)
-# print("Acceptance Count:", acceptance_count)
-# #print("ddof list:", ddof_list)
+def run_multiple_chains(n_chains, beta_true, number_of_iter, burn_in, sigma, num_points):
+    # Generate random seeds for each chain.
+    seeds = np.random.randint(0, 10000, size=n_chains)
+    # Create argument tuples for each chain.
+    args = [
+        (seed, beta_true, number_of_iter, burn_in, sigma, num_points)
+        for seed in seeds
+    ]
+    
+    # Limit the number of worker processes to the minimum of available cores and 4.
+    n_workers = min(mp.cpu_count(), 4)
+    print(f"Using {n_workers} worker processes to run {n_chains} chains.", flush=True)
+    
+    # Create a multiprocessing Pool and run chains in parallel.
+    with mp.Pool(processes=n_workers) as pool:
+        results = pool.starmap(run_single_chain, args)
+    
+    print("All chains completed.", flush=True)
+    
+    # Unpack the results. Each result should be a tuple like
+    # (chain, beta_mcmc, acceptance_history, acceptance_count).
+    (chain_afems, beta_mcmc_afems, acceptance_hist_history_afems, acceptance_count_afems,
+    chain_uniforms, beta_mcmc_uniforms, acceptance_hist_history_uniforms, acceptance_count_uniforms,
+    ddof_lists) = zip(*results)
+
+    return list(beta_mcmc_afems), list(beta_mcmc_uniforms)
+
+if __name__ == '__main__':
+    n_chains = 4  # For example, 8 chains will run in two rounds with 4 workers.
+    number_of_iter = 10000
+    burn_in = 5000
+    sigma = 0.01 
+    num_points = 100
+    beta_true = np.array([0.65,0.15])
+    
+    beta_mcmcs_afem, beta_mcmcs_uniform = run_multiple_chains(
+        n_chains, beta_true, number_of_iter, burn_in, sigma, num_points
+    )
+    
+    print("True beta:", beta_true)
+    print("AFEM recovered beta (mean after burn-in):", beta_mcmcs_afem)
+    print("Uniform FEM recovered beta (mean after burn-in):", beta_mcmcs_uniform)
+
+    # Now save the results to a file in the same directory
+    # We'll create a filename that includes the main parameters
+    filename = f"results_{n_chains}chains_{number_of_iter}iter_sigma{sigma}_npoints{num_points}.txt"
+    with open(filename, "w") as f:
+        # Write out the parameters
+        f.write("=== MCMC Run Parameters ===\n")
+        f.write(f"Number of chains: {n_chains}\n")
+        f.write(f"Number of iterations per chain: {number_of_iter}\n")
+        f.write(f"Burn-in: {burn_in}\n")
+        f.write(f"Sigma: {sigma}\n")
+        f.write(f"Number of observation points: {num_points}\n")
+        f.write(f"True beta: {beta_true}\n")
+        f.write("\n")
+        
+        # Write out the results for each chain
+        f.write("=== MCMC Results ===\n")
+        for i in range(n_chains):
+            f.write(f"Chain {i+1}:\n")
+            f.write(f"  AFEM recovered beta: {beta_mcmcs_afem[i]}\n")
+            f.write(f"  Uniform recovered beta: {beta_mcmcs_uniform[i]}\n")
+            f.write("\n")
+    
+    print(f"Results saved to {filename}")
