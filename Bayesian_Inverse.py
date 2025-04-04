@@ -55,8 +55,24 @@ def fe_solution_at_obs(c_sol, mesh, x_obs):
 # Alternatively, if many observation points fall in the same element,
 # you could vectorize the process by grouping x_obs by element.
 
+def compute_integral_x_dudx(mesh, c_sol):
+    c_sol_full = assemble_nodal_values(c_sol)
+    total = 0.0
+    for e in range(len(mesh)-1):
+        x0 = mesh[e]
+        x1 = mesh[e+1]
+        c0 = c_sol_full[e]
+        c1 = c_sol_full[e+1]
+        # Slope on element e
+        slope_e = (c1 - c0) / (x1 - x0)
 
+        # Contribution from element e
+        total += slope_e * (x1**2 - x0**2) * 0.5
 
+    return total
+def assemble_nodal_values(C):
+    C = np.asarray(C) # Make sure C is 1D.
+    return np.concatenate(([[0.0]], C, [[0.0]]))
 def add_noise(observations_at_xi, num_points, sigma):
   """
   Adds a normally distributed noise, theta
@@ -75,25 +91,24 @@ def add_noise(observations_at_xi, num_points, sigma):
   delta = observations_at_xi + noise 
   return delta
 
-def phi(observations, predicted, sigma, num_points) :
-  '''
-  For a set of predetermined points xi -- obtained via np.linspace,
-  this function defines the likelihood function 
+def phi(observations, predicted, sigma) :
+    '''
+    For a set of predetermined points xi -- obtained via np.linspace,
+    this function defines the likelihood function 
 
-  Arguments:
-  observations: Generated noisy observation using beta_true -- corresponds to y in literature
-  predicted: For a proposed beta_i, we compute the noisy observation using the forward solver 
-  -- corresponds to g(beta_i) in literature
+    Arguments:
+    observations: Generated noisy observation using beta_true -- corresponds to y in literature
+    predicted: For a proposed beta_i, we compute the noisy observation using the forward solver 
+    -- corresponds to g(beta_i) in literature
 
-  Returns: 
-  Likelihood function that is proportional to the prior distribution
-  
-  '''
-  covariance_matrix = cov_matrix(sigma, num_points)
-  diff = predicted - observations
-  covariance_matrix_inv = np.linalg.inv(covariance_matrix) 
-  val = 0.5 * diff.T @ covariance_matrix_inv @ diff
-  return val
+    Returns: 
+    Likelihood function that is proportional to the prior distribution
+    
+    '''
+    var = sigma**2
+    diff = predicted - observations
+    val = 0.5 * (diff**2) / var
+    return val
 
 def compute_A(phi_0, phi_i, sigma):
   val = np.exp(phi_0 - phi_i)
@@ -179,7 +194,7 @@ def MCMC_AFEM(beta_true, number_of_iter, burn_in, sigma, num_points):
   
   return chain, beta_mcmc, acceptance_count, avg_ddof
 
-def MCMC(beta_true, number_of_iter, burn_in, sigma, num_points):
+def MCMC(beta_true, number_of_iter, burn_in, sigma, num_dorfler):
     '''
     Builds two MCMC chains (one using AFEM and one using a uniform mesh) using the same sequence of proposed β.
     
@@ -195,10 +210,11 @@ def MCMC(beta_true, number_of_iter, burn_in, sigma, num_points):
       chain_uniform, beta_mcmc_uniform, acceptance_prob_history_uniform, acceptance_count_uniform,
       ddof_list
     '''
+    np.random.seed(72)
     
     # Define proposal ranges:
-    x_star_range = (0.3, 0.7)
-    r_range = (0.1, 0.2)
+    x_star = 0.5
+    r_range = (0.1, 0.4) 
     
     # Initialize lists to store chain history and diagnostic info:
     chain_afem = []
@@ -206,31 +222,33 @@ def MCMC(beta_true, number_of_iter, burn_in, sigma, num_points):
     ddof_list = []
     
     # Compute true data (delta) for both forward models:
-    mesh_true, c_sol_true, ddof_true = sl.refinement_loop(0.00001, beta_true)
-    y_true = fe_solution_at_obs(c_sol_true, mesh_true, np.linspace(0.0, 1.0, num_points))
-    delta = add_noise(y_true, num_points, sigma)
+    mesh_true , c_sol_true, ddof_true= sl.refinement_loop(beta_true, num_dorfler) 
+    y_true = compute_integral_x_dudx(mesh_true, c_sol_true)
+    delta = y_true + np.random.normal(0.0, sigma)
     
-    uniform_mesh = np.linspace(0.0, 1.0, 129)  # 128 elements => 129 nodes
-    c_sol_uniform_true, fvect_true_uniform = sl.solve_scF_once(uniform_mesh, beta_true)
-    y_true_uniform = fe_solution_at_obs(c_sol_uniform_true, uniform_mesh, np.linspace(0.0, 1.0, num_points))
-    delta_uniform = add_noise(y_true_uniform, num_points, sigma)
+    uniform_mesh = np.linspace(0.0, 1.0, 635)  # 33 nodes
+    # c_sol_uniform_true, fvect_true_uniform = sl.solve_scF_once(uniform_mesh, beta_true)
+    # y_true_uniform = fe_solution_at_obs(c_sol_uniform_true, uniform_mesh, np.linspace(0.0, 1.0, num_points))
+    # delta_uniform = add_noise(y_true_uniform, num_points, sigma)
     
     # Draw initial beta (common initial state for both chains)
-    beta_0 = np.array([np.random.uniform(*x_star_range),
+    beta_0 = np.array([x_star,
                        np.random.uniform(*r_range)])
     print("Beta_0:", beta_0)
     
     # Initialize current state for AFEM chain:
     beta_current_afem = beta_0.copy()
-    mesh_0, c_sol_0, ddof_0 = sl.refinement_loop(0.001, beta=beta_0)
-    y_current_afem = fe_solution_at_obs(c_sol_0, mesh_0, np.linspace(0.0, 1.0, num_points))
-    phi_current_afem = phi(delta, y_current_afem, sigma, num_points)
+    mesh_0_afem, c_sol_0_afem, ddof_0_afem = sl.refinement_loop(beta = beta_current_afem, num_dorfler = 15)
+    y_current_afem = compute_integral_x_dudx(mesh_0_afem, c_sol_0_afem)
+    phi_current_afem = phi(delta, y_current_afem, sigma)
+    print("phi_0:", phi_current_afem)
+    print("ddof cuurent:", ddof_0_afem)
     
     # Initialize current state for Uniform FEM chain:
     beta_current_uniform = beta_0.copy()
-    c_sol_0_uniform, fvect_0_uniform = sl.solve_scF_once(uniform_mesh, beta_0)
-    y_current_uniform = fe_solution_at_obs(c_sol_0_uniform, uniform_mesh, np.linspace(0.0, 1.0, num_points))
-    phi_current_uniform = phi(delta_uniform, y_current_uniform, sigma, num_points)
+    c_sol_0_uniform, fvect_0_uniform = sl.solve_scF_once(uniform_mesh, beta_current_uniform)
+    y_current_uniform = compute_integral_x_dudx(uniform_mesh, c_sol_0_uniform)
+    phi_current_uniform = phi(delta, y_current_uniform , sigma)
     
     acceptance_count_afem = 0
     acceptance_count_uniform = 0
@@ -240,15 +258,16 @@ def MCMC(beta_true, number_of_iter, burn_in, sigma, num_points):
     # MCMC loop:
     for i in range(number_of_iter):
         # Generate a common proposal for β:
-        beta_proposal = np.array([np.random.uniform(*x_star_range),
+        beta_proposal = np.array([x_star,
                                   np.random.uniform(*r_range)])
         print("beta proposal:", beta_proposal)
         
         # Evaluate proposal with AFEM:
-        mesh_proposal_afem, c_sol_proposal_afem, ddof_proposal_afem = sl.refinement_loop(0.001, beta=beta_proposal)
-        y_proposal_afem = fe_solution_at_obs(c_sol_proposal_afem, mesh_proposal_afem, np.linspace(0.0, 1.0, num_points))
+        mesh_proposal_afem, c_sol_proposal_afem, ddof_proposal_afem = sl.refinement_loop(beta = beta_proposal, num_dorfler = 15)
+        print("ddof proposal:", ddof_proposal_afem)
+        y_proposal_afem = compute_integral_x_dudx(mesh_proposal_afem, c_sol_proposal_afem)
         ddof_list.append((beta_proposal, ddof_proposal_afem))
-        phi_proposal_afem = phi(delta, y_proposal_afem, sigma, num_points)
+        phi_proposal_afem = phi(delta, y_proposal_afem, sigma)
         print("phi proposal (AFEM):", phi_proposal_afem)
         A_afem = compute_A(phi_current_afem, phi_proposal_afem, sigma)
         acceptance_prob_afem = min(1, A_afem)
@@ -257,8 +276,8 @@ def MCMC(beta_true, number_of_iter, burn_in, sigma, num_points):
         
         # Evaluate proposal with Uniform FEM:
         c_sol_proposal_uniform, fvect_proposal_uniform = sl.solve_scF_once(uniform_mesh, beta=beta_proposal)
-        y_proposal_uniform = fe_solution_at_obs(c_sol_proposal_uniform, uniform_mesh, np.linspace(0.0, 1.0, num_points))
-        phi_proposal_uniform = phi(delta_uniform, y_proposal_uniform, sigma, num_points)
+        y_proposal_uniform = compute_integral_x_dudx(uniform_mesh, c_sol_proposal_uniform)
+        phi_proposal_uniform = phi(delta, y_proposal_uniform, sigma)
         print("phi proposal (Uniform FEM):", phi_proposal_uniform)
         A_uniform = compute_A(phi_current_uniform, phi_proposal_uniform, sigma)
         acceptance_prob_uniform = min(1, A_uniform)
@@ -338,20 +357,19 @@ if __name__ == '__main__':
     number_of_iter = 10000
     burn_in = 5000
     sigma = 0.01 
-    num_points = 100
-    beta_true = np.array([0.65,0.15])
+    num_dorfler = 30
+    beta_true = np.array([0.50,0.30])
     
     beta_mcmcs_afem, beta_mcmcs_uniform = run_multiple_chains(
-        n_chains, beta_true, number_of_iter, burn_in, sigma, num_points
+        n_chains, beta_true, number_of_iter, burn_in, sigma, num_dorfler
     )
     
     print("True beta:", beta_true)
     print("AFEM recovered beta (mean after burn-in):", beta_mcmcs_afem)
     print("Uniform FEM recovered beta (mean after burn-in):", beta_mcmcs_uniform)
 
-    # Now save the results to a file in the same directory
-    # We'll create a filename that includes the main parameters
-    filename = f"results_{n_chains}chains_{number_of_iter}iter_sigma{sigma}_npoints{num_points}.txt"
+
+    filename = f"results_{n_chains}chains_{number_of_iter}iter_sigma{sigma}_ndorfler{num_dorfler}.txt"
     with open(filename, "w") as f:
         # Write out the parameters
         f.write("=== MCMC Run Parameters ===\n")
@@ -359,7 +377,7 @@ if __name__ == '__main__':
         f.write(f"Number of iterations per chain: {number_of_iter}\n")
         f.write(f"Burn-in: {burn_in}\n")
         f.write(f"Sigma: {sigma}\n")
-        f.write(f"Number of observation points: {num_points}\n")
+        f.write(f"Num Dorfler: {num_dorfler}\n")
         f.write(f"True beta: {beta_true}\n")
         f.write("\n")
         

@@ -200,48 +200,63 @@ def solve_scF_once(mesh, beta):
 
     return c_sol, fvect
 
-def refinement_loop(epsilon, beta):
+def refinement_loop(beta, num_dorfler):
     """
-    1) Start with initial mesh
+    1) Start with an initial mesh
     2) Solve once
     3) Estimate errors
-    4) If all errors < epsilon, done. Else refine, go back to step 2.
+    4) Refine if needed, or break if done
+    5) Return mesh, solution, and stored data
     """
-    mesh = np.linspace(0.0, 1.0, 4).tolist()
-    #ddof = len(mesh) - 2
+    approximation_list = []
+
+    # Initial mesh
+    mesh = np.linspace(0.0, 1.0, 5).tolist()
+    print('length mesh:', len(mesh))
+    ddof = len(mesh) - 2
 
     iteration_index = 0
-    while True:
-        # Solve for c_sol on the current mesh
-        c_sol, f_sol = solve_scF_once(mesh=mesh, beta = beta)
+    
+    while iteration_index < num_dorfler:
+        # 1) Solve for c_sol on the current mesh
+        c_sol, f_sol = solve_scF_once(mesh=mesh, beta=beta)
 
-        # Convert solution to nodal representation
-        nodal = assemble_nodal_values(c_sol)
-
-        # Estimate the elementwise errors
-        errors = sum_of_error_list(mesh=mesh, nodal=nodal, beta= beta)
-
-        # Mark which elements to refine
-        elements_to_refine = element_selection(errors=errors, epsilon=epsilon)
-        #elements_to_refine = dorfler_marking(errors, 0.9)
         
 
-        # If no elements exceed threshold => done
+        # 3) For your "global" approximation (e.g., a scalar measure)
+        nodal = assemble_nodal_values(c_sol)
+
+        approximation = nodal.T @ f_sol
+        approximation_list.append(approximation)
+
+        # 4) Estimate elementwise errors
+        errors = sum_of_error_list(mesh=mesh, nodal=nodal, beta=beta)
+
+        # 5) Mark which elements to refine
+        elements_to_refine = dorfler_marking(errors, 0.5)
+
         if not elements_to_refine:
+            # no elements to refine => done
             break
-        # Refine the mesh only on the marked elements.
+        
+        # Refine the mesh
         new_mesh = element_refinement(mesh, elements_to_refine)
+
 
         if new_mesh == mesh:
             print("Mesh did not change upon refinement. Terminating.")
             break
+
         mesh = new_mesh
         iteration_index += 1
-        ddof = len(new_mesh) - 2
 
-    # After loop, final solution is c_sol on final mesh
-    # Return everything, including the entire history
-    return mesh, c_sol, ddof
+        # Update degrees of freedom (assuming 1D interior points only)
+        ddof += len(new_mesh) - 2
+    c_sol, f_sol = solve_scF_once(mesh=mesh, beta=beta)
+
+
+    # Return what you need
+    return (mesh, c_sol, ddof)
 
 
 ###################################
@@ -458,6 +473,14 @@ def refine_mesh(mesh, element_index):
     # Insert the midpoint after mesh[element_index]
     return mesh[:element_index+1] + [midpoint] + mesh[element_index+1:]
 
+def dorfler_marking(errors, theta):
+    errors = np.asarray(errors).flatten()
+    total_error = np.sum(errors)
+    sorted_indices = np.argsort(-errors)  # descending order
+    cum_sum = np.cumsum(errors[sorted_indices])
+    num_marked = np.searchsorted(cum_sum, theta * total_error) + 1
+    marked_indices = sorted_indices[:num_marked]
+    return marked_indices.tolist()
 
 def element_selection(errors, epsilon):
     """

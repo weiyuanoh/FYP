@@ -200,7 +200,7 @@ def solve_scF_once(mesh, beta):
 
     return c_sol, fvect
 
-def refinement_loop(epsilon, beta):
+def refinement_loop( beta):
     """
     1) Start with initial mesh
     2) Solve once
@@ -213,7 +213,7 @@ def refinement_loop(epsilon, beta):
     ddof = len(mesh) - 2
 
     iteration_index = 0
-    while iteration_index < 30:
+    while iteration_index < 35:
         # Solve for c_sol on the current mesh
         c_sol, f_sol = solve_scF_once(mesh=mesh, beta = beta)
         nodal = assemble_nodal_values(c_sol)
@@ -503,13 +503,13 @@ def element_refinement(mesh, element_indices):
 import numpy as np
 import matplotlib.pyplot as plt
 
-beta = np.array([0.50, 0.18])
+beta = np.array([0.50, 0.30])
 
 
 
-mesh, c_sol, ddof_list, error_list , true_approx = refinement_loop(epsilon=0.0001, beta= beta)
-
-ddof_array = np.array(ddof_list[:25])
+mesh, c_sol, ddof_list, error_list , true_approx = refinement_loop( beta= beta)
+print(pd.DataFrame(data= {"dof": ddof_list, "error":error_list}))
+ddof_array = np.array(ddof_list[:30])
 C_1 = error_list[0] * ddof_array[0]
 ref_line_1 = C_1 * 1/(ddof_array)
 C_2 = error_list[0] * ddof_array[0]**2
@@ -527,17 +527,23 @@ for l in range(3, 15):
     uniform_ddof.append(ddof_u)
     uniform_error.append(error_uniform)
 
-plt.figure(figsize=(8, 6))
+afem_slope, afem_intercept = np.polyfit(np.log(ddof_list[:33]), np.log(error_list[:33]), 1)
+fit_afem = np.exp(afem_intercept) *np.power(ddof_list, afem_slope )
+
+uni_slope, uni_intercept = np.polyfit(np.log(uniform_ddof), np.log(uniform_error), 1)
+fit_uniform = np.exp(uni_intercept) * np.power(uniform_ddof, uni_slope)
+
+plt.figure(figsize=(12, 8))
 plt.plot(uniform_ddof, uniform_error, 'o-', label='Uniform Error')
 plt.yscale('log')  # Log scale on the y-axis
 plt.xlabel('Refinement level (l)', fontsize=12)
 plt.ylabel('Error (log scale)', fontsize=12)
-plt.title('Uniform Refinement: Error vs. Refinement Level', fontsize=14)
+plt.title('AFEM vs Uniform Convergence Rate', fontsize=10)
 plt.grid(True, which='both', linestyle='--', linewidth=0.5)
 
-plt.plot(ddof_list[:25], error_list[:25], 'o-', label='Error vs. ddof')
-plt.plot(ddof_array, ref_line_1, 'r--', label=r'Reference $1/N$')
-plt.plot(ddof_array, ref_line_2, 'r--', label=r'Reference $1/N^2$')
+plt.plot(ddof_list[:32], error_list[:32], 'o-', label='Error vs. ddof')
+plt.loglog(ddof_list[:32], fit_afem[:32], '--', label=f'AFEM Fit: slope={afem_slope:.2f}')
+plt.loglog(uniform_ddof, fit_uniform, '--', label=f'Uniform Fit: slope={uni_slope:.2f}' )
 plt.xscale('log')
 plt.yscale('log')
 plt.xlabel('Degrees of Freedom (ddof)', fontsize=14)
