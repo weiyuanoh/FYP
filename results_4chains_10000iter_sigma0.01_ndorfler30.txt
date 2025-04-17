@@ -1,0 +1,25 @@
+=== MCMC Run Parameters ===
+Number of chains: 4
+Number of iterations per chain: 10000
+Burn-in: 5000
+Sigma: 0.01
+Num Dorfler: 30
+True beta: [0.5 0.3]
+
+=== MCMC Results ===
+Chain 1:
+  AFEM recovered beta: [0.5        0.26892405]
+  Uniform recovered beta: [0.5        0.27093662]
+
+Chain 2:
+  AFEM recovered beta: [0.5        0.26892405]
+  Uniform recovered beta: [0.5        0.27093662]
+
+Chain 3:
+  AFEM recovered beta: [0.5        0.26892405]
+  Uniform recovered beta: [0.5        0.27093662]
+
+Chain 4:
+  AFEM recovered beta: [0.5        0.26892405]
+  Uniform recovered beta: [0.5        0.27093662]
+
