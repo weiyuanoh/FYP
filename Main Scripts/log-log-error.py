@@ -503,7 +503,7 @@ def element_refinement(mesh, element_indices):
 import numpy as np
 import matplotlib.pyplot as plt
 
-beta = np.array([0.50, 0.30])
+beta = np.array([0, 0.314152])
 
 
 
